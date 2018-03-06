@@ -93,10 +93,27 @@ close all;
 
 
 % Set the random forest parameters ...
-% Train Random Forest ...
-% Evaluate/Test Random Forest ...
-% show accuracy and confusion matrix ...
+param.num = 10;         % Number of trees
+param.depth = 5;        % trees depth
+param.splitNum = 3;     % Number of split functions to try
+param.split = 'IG';     % Currently support 'information gain' only
 
+% Train Random Forest ...
+trees = growTrees(data_train,param);
+
+% Evaluate/Test Random Forest ...
+leaves = testTrees_fast(data_test,trees);
+
+% Create p_rf
+p_rf_1 = trees(1).prob(leaves,:);
+p_rf = sum(p_rf_1, 1)/length(trees);  
+% show accuracy and confusion matrix ...
+confus_script;
+
+wrongClass = data_test(data_test(:,end)~=c');
+rightClass = data_test(data_test(:,end)==c');
+
+disp('Done');
 
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 % random forest codebook for Caltech101 image categorisation
