@@ -82,7 +82,7 @@ switch MODE
         imgSel = [15 15]; % randomly select 15 images each class without replacement. (For both training & testing)
         folderName = './Caltech_101/101_ObjectCategories';
         classList = dir(folderName);
-        classList = {classList(3:end).name} % 10 classes
+        classList = {classList(3:end).name}; % 10 classes
         
         disp('Loading training images...')
         % Load Images -> Description (Dense SIFT)
@@ -102,7 +102,7 @@ switch MODE
                 I = imread(fullfile(subFolderName,imgList(imgIdx_tr(i)).name));
                 
                 % Visualise
-                if i < 6 & showImg
+                if (i < 6) && showImg
                     subaxis(length(classList),5,cnt,'SpacingVert',0,'MR',0);
                     imshow(I);
                     cnt = cnt+1;
@@ -114,28 +114,74 @@ switch MODE
                 end
                 
                 % For details of image description, see http://www.vlfeat.org/matlab/vl_phow.html
-                [~, desc_tr{c,i}] = vl_phow(single(I),'Sizes',PHOW_Sizes,'Step',PHOW_Step); %  extracts PHOW features (multi-scaled Dense SIFT)
+                [~, desc_tr{c,i}] = vl_phow(single(I),'Sizes',PHOW_Sizes,'Step',PHOW_Step); 
+                % extracts PHOW features (multi-scaled Dense SIFT)
             end
         end
         
         disp('Building visual codebook...')
         % Build visual vocabulary (codebook) for 'Bag-of-Words method'
-        desc_sel = single(vl_colsubset(cat(2,desc_tr{:}), 10e4)); % Randomly select 100k SIFT descriptors for clustering
+        % Randomly select 100k SIFT descriptors for clustering
+        desc_sel = single(vl_colsubset(cat(2,desc_tr{:}), 10e4));         
         
         % K-means clustering
-        numBins = 256; % for instance,
-        
+        numBins = 256; % for instance,        
         
         % write your own codes here
         % ...
-            
-       
+        % 100k x 1 vector containing the cluster number for each descriptor
+        % MENTION IN REPORT THAT kmeans DsOES NOT CONVERGE IN n ITERATIONS
+%         tic
+%         [kmeans_idx1, centroids1, kmeans_sums1] = kmeans(desc_sel',numBins);
+%         toc        
+%         tic
+        energy = inf;
+        for i=1:1
+            [kmeansIdx1, centroids1, energy1] = kmeans_custom(double(desc_sel),numBins, 3000);
+            if energy1 < energy
+                kmeansIdx = kmeansIdx1;
+                centroids = centroids1;
+                energy = energy1;
+            end
+        end
+%         toc
+%         disp([sum(kmeans_sums1)/100000, kmeans_sums])
+        % end of own code
+        
         disp('Encoding Images...')
         % Vector Quantisation
         
         % write your own codes here
         % ...
-  
+%         t1 = tic;
+%         k = 1;
+%         data_train = zeros(size(desc_tr,1)*size(desc_tr,2), numBins+1);
+%         for c = 1:length(classList)
+%             for i = 1:length(imgIdx_tr)
+%                 label = knnsearch(centroids, desc_tr{c,i}');  
+%                 label = reshape(label,[],1);
+%                 figure;
+%                 data_train(k, 1:end-1) = hist(label,numBins)/length(label);
+%                 data_train(k,end) = c;
+%                 k = k+1;
+%             end
+%         end
+%         toc(t1)
+%         t2 = tic;
+        
+        k = 1;
+        data_train = zeros(size(desc_tr,1)*size(desc_tr,2), numBins+1);
+        for c = 1:length(classList)
+            for i = 1:length(imgIdx_tr)
+                [~,label] = min(dot(centroids',centroids',1)'/2-centroids*single(desc_tr{c,i}),[],1);  % assign sample labels
+                figure;
+                data_train(k, 1:end-1) = hist(label,numBins)/length(label);
+                data_train(k,end) = c;
+                k = k+1;
+            end
+        end
+%         toc(t2)
+        % end of own code
         
         % Clear unused varibles to save memory
         clearvars desc_tr desc_sel
@@ -174,17 +220,27 @@ switch MODE
             end
         end
         suptitle('Testing image samples');
-                if showImg
+        if showImg
             figure('Units','normalized','Position',[.5 .1 .4 .9]);
-        suptitle('Testing image representations: 256-D histograms');
+            suptitle('Testing image representations: 256-D histograms');
         end
 
         % Quantisation
         
         % write your own codes here
         % ...
-        
-        
+        k = 1;
+        data_query = zeros(size(desc_te,1)*size(desc_te,2), numBins+1);
+        for c = 1:length(classList)
+            for i = 1:length(imgIdx_te)
+                [~,label] = min(dot(centroids',centroids',1)'/2-centroids*single(desc_te{c,i}),[],1);  % assign sample labels
+                figure;
+                data_query(k, 1:end-1) = hist(label,numBins)/length(label);
+                data_query(k,end) = c;
+                k = k+1;
+            end
+        end
+        % end of own code
     otherwise % Dense point for 2D toy data
         xrange = [-1.5 1.5];
         yrange = [-1.5 1.5];
