@@ -1,4 +1,4 @@
-function [ data_train, data_query ] = getData( MODE )
+function [ data_train, data_query ] = getData(MODE, numBins, type, param)
 % Generate training and testing data
 
 % Data Options:
@@ -124,64 +124,81 @@ switch MODE
         % Randomly select 100k SIFT descriptors for clustering
         desc_sel = single(vl_colsubset(cat(2,desc_tr{:}), 10e4));         
         
-        % K-means clustering
-        numBins = 256; % for instance,        
+        % K-means clustering        
         
         % write your own codes here
         % ...
-        % 100k x 1 vector containing the cluster number for each descriptor
-        % MENTION IN REPORT THAT kmeans DsOES NOT CONVERGE IN n ITERATIONS
-%         tic
-%         [kmeans_idx1, centroids1, kmeans_sums1] = kmeans(desc_sel',numBins);
-%         toc        
-%         tic
-        energy = inf;
-        for i=1:1
-            [kmeansIdx1, centroids1, energy1] = kmeans_custom(double(desc_sel),numBins, 3000);
-            if energy1 < energy
-                kmeansIdx = kmeansIdx1;
-                centroids = centroids1;
-                energy = energy1;
+        if strcmp(type,'kmeanscodebook')
+            disp('K-Means Codebook...')
+            % 100k x 1 vector containing the cluster number for each descriptor
+            % MENTION IN REPORT THAT kmeans DsOES NOT CONVERGE IN n ITERATIONS
+            % [kmeans_idx1, centroids1, kmeans_sums1] = kmeans(desc_sel',numBins);
+            energy = inf;
+            for i=1:1
+                [kmeansIdx1, centroids1, energy1] = kmeans_custom(double(desc_sel),numBins, 3000);
+                if energy1 < energy
+                    kmeansIdx = kmeansIdx1;
+                    centroids = centroids1;
+                    energy = energy1;
+                end
+            end     
+    %         k = 1;
+    %         data_train = zeros(size(desc_tr,1)*size(desc_tr,2), numBins+1);
+    %         for c = 1:length(classList)
+    %             for i = 1:length(imgIdx_tr)
+    %                 label = knnsearch(centroids, desc_tr{c,i}');  
+    %                 label = reshape(label,[],1);
+    %                 figure;
+    %                 data_train(k, 1:end-1) = hist(label,numBins)/length(label);
+    %                 data_train(k,end) = c;
+    %                 k = k+1;
+    %             end
+    %         end
+    %         toc(t1)
+    %         t2 = tic;
+
+            k = 1;
+            data_train = zeros(size(desc_tr,1)*size(desc_tr,2), numBins+1);
+            for c = 1:length(classList)
+                for i = 1:length(imgIdx_tr)
+                    [~,label] = min(dot(centroids',centroids',1)'/2-centroids*single(desc_tr{c,i}),[],1);  % assign sample labels
+                    figure;
+                    data_train(k, 1:end-1) = hist(label,numBins)/length(label);
+                    data_train(k,end) = c;
+                    k = k+1;
+                end
+            end            
+        elseif strcmp(type,'rfcodebook')    
+            disp('RF Codebook...')
+            % append the classes to the end of each descriptor
+            for c=1:length(classList)
+                for i=1:imgSel(1)
+                    desc_tr{c,i}=[desc_tr{c,i}; c*ones(1,length(desc_tr{c,i}))];
+                end
+            end
+            
+            % Build visual vocabulary (codebook) for 'Bag-of-Words method'
+            desc_sel = single(vl_colsubset(cat(2,desc_tr{:}), 10e4))';
+            
+            trees = growTrees(desc_sel,param);
+%             trees = fix_trees(trees);
+            
+            % next generate histograms
+            nLeaves=length(trees(1).prob);
+            data_train=zeros(length(classList)*imgSel(1),nLeaves+1);
+            % iterate over all points
+            for c=1:length(classList)
+                for i=1:length(imgIdx_tr)
+                    % for each descriptor, we create the histogram
+                    leaves=testTrees_fast(single(desc_tr{c,i}(1:end,:)'),trees);
+                    data_train(imgSel(1)*(c-1)+i,1:end-1)=hist(reshape(leaves,1,numel(leaves)),nLeaves)/length(leaves);
+                    data_train(imgSel(1)*(c-1)+i,end)=c;
+                end
             end
         end
-%         toc
-%         disp([sum(kmeans_sums1)/100000, kmeans_sums])
         % end of own code
         
-        disp('Encoding Images...')
-        % Vector Quantisation
-        
-        % write your own codes here
-        % ...
-%         t1 = tic;
-%         k = 1;
-%         data_train = zeros(size(desc_tr,1)*size(desc_tr,2), numBins+1);
-%         for c = 1:length(classList)
-%             for i = 1:length(imgIdx_tr)
-%                 label = knnsearch(centroids, desc_tr{c,i}');  
-%                 label = reshape(label,[],1);
-%                 figure;
-%                 data_train(k, 1:end-1) = hist(label,numBins)/length(label);
-%                 data_train(k,end) = c;
-%                 k = k+1;
-%             end
-%         end
-%         toc(t1)
-%         t2 = tic;
-        
-        k = 1;
-        data_train = zeros(size(desc_tr,1)*size(desc_tr,2), numBins+1);
-        for c = 1:length(classList)
-            for i = 1:length(imgIdx_tr)
-                [~,label] = min(dot(centroids',centroids',1)'/2-centroids*single(desc_tr{c,i}),[],1);  % assign sample labels
-                figure;
-                data_train(k, 1:end-1) = hist(label,numBins)/length(label);
-                data_train(k,end) = c;
-                k = k+1;
-            end
-        end
-%         toc(t2)
-        % end of own code
+        disp('Encoding Images...')                
         
         % Clear unused varibles to save memory
         clearvars desc_tr desc_sel
@@ -229,16 +246,31 @@ switch MODE
         
         % write your own codes here
         % ...
-        k = 1;
-        data_query = zeros(size(desc_te,1)*size(desc_te,2), numBins+1);
-        for c = 1:length(classList)
-            for i = 1:length(imgIdx_te)
-                [~,label] = min(dot(centroids',centroids',1)'/2-centroids*single(desc_te{c,i}),[],1);  % assign sample labels
-                figure;
-                data_query(k, 1:end-1) = hist(label,numBins)/length(label);
-                data_query(k,end) = c;
-                k = k+1;
+        if strcmp(type,'kmeanscodebook')
+            k = 1;
+            data_query = zeros(size(desc_te,1)*size(desc_te,2), numBins+1);
+            for c = 1:length(classList)
+                for i = 1:length(imgIdx_te)
+                    [~,label] = min(dot(centroids',centroids',1)'/2-centroids*single(desc_te{c,i}),[],1);  % assign sample labels
+                    figure;
+                    data_query(k, 1:end-1) = hist(label,numBins)/length(label);
+                    data_query(k,end) = c;
+                    k = k+1;
+                end
             end
+        elseif (strcmp(type,'rfcodebook'))
+            % next generate histograms
+            data_query=zeros(length(classList)*imgSel(2),nLeaves+1);
+            % iterate over all points
+            for c=1:length(classList)
+                for i=1:imgSel(2)
+                    % for each descriptor, we create the histogram
+                    currDescriptor=[single(desc_te{c,i}(1:end,:)') zeros(size(desc_te{c,i},2),1)];
+                    leaves=testTrees_fast(currDescriptor,trees);
+                    data_query(imgSel(2)*(c-1)+i,1:end-1)=hist(reshape(leaves,1,numel(leaves)),nLeaves)./numel(leaves);
+                    data_query(imgSel(2)*(c-1)+i,end)=c;
+                end
+            end            
         end
         % end of own code
     otherwise % Dense point for 2D toy data

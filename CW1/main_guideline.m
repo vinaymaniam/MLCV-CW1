@@ -56,7 +56,7 @@ rng default
 %                    .4 .3;...
 %                    -.7 .4;...
 %                    .5 -.5];
-% leaves=testTrees_fast(data_test,trees,param.weakLearner) + 1;
+% leaves=testTrees_fast(data_test,trees);
 % 
 % %append new row to prob
 % p_rf = trees(1).prob(leaves,:);
@@ -86,16 +86,16 @@ rng default
 % Select dataset
 % we do bag-of-words technique to convert images to vectors (histogram of codewords)
 % Set 'showImg' in getData.m to 0 to stop displaying training and testing images and their feature vectors
-[data_train, data_test] = getData('Caltech');
-close all;
-
-
 
 % Set the random forest parameters ...
 param.num = 100;         % Number of trees
 param.depth = 5;        % trees depth
 param.splitNum = 3;     % Number of split functions to try
 param.split = 'IG';     % Currently support 'information gain' only
+numBins = 256;
+
+[data_train, data_test] = getData('Caltech', numBins, 'rfcodebook', param);
+close all;
 
 % Train Random Forest ...
 trees = growTrees(data_train,param);
