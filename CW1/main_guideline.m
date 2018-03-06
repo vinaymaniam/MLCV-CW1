@@ -56,17 +56,16 @@ rng default
 %                    .4 .3;...
 %                    -.7 .4;...
 %                    .5 -.5];
-%     for n=1:4
-%         leaves = testTrees([test_point(n,:) 0],trees);
-%         % average the class distributions of leaf nodes of all trees
-%         p_rf = trees(1).prob(leaves,:);
-%         p_rf_sum = sum(p_rf, 1)/length(trees);    
-%         plot(test_point(n,1), test_point(n,2), 's', 'MarkerFaceColor', p_rf_sum, 'MarkerEdgeColor','k', 'MarkerSize', 10);
-%         title(sprintf('Toy Spiral Test Results for %i SplitNum', nums(i)));
-%     end
-%     toc
-% % end
+% leaves=testTrees_fast(data_test,trees,param.weakLearner) + 1;
 % 
+% %append new row to prob
+% p_rf = trees(1).prob(leaves,:);
+% 
+% % get the probabilities of the each class
+% p_rf_sum=[sum(reshape(p_rf(:,1),[length(data_test),param.num]),2)...
+%           sum(reshape(p_rf(:,2),[length(data_test),param.num]),2)...
+%           sum(reshape(p_rf(:,3),[length(data_test),param.num]),2)]./param.num;
+% end
 % 
 % % Test on the dense 2D grid data, and visualise the results ... 
 % 
@@ -93,7 +92,7 @@ close all;
 
 
 % Set the random forest parameters ...
-param.num = 10;         % Number of trees
+param.num = 100;         % Number of trees
 param.depth = 5;        % trees depth
 param.splitNum = 3;     % Number of split functions to try
 param.split = 'IG';     % Currently support 'information gain' only
@@ -105,8 +104,13 @@ trees = growTrees(data_train,param);
 leaves = testTrees_fast(data_test,trees);
 
 % Create p_rf
-p_rf_1 = trees(1).prob(leaves,:);
-p_rf = sum(p_rf_1, 1)/length(trees);  
+p_rf = trees(1).prob(leaves,:);
+
+p_rf_sum=zeros(size(data_test,1),10);
+for i=1:10
+    p_rf_sum(:,i)=sum(reshape(p_rf(:,i),[size(data_test,1),param.num]),2);
+end
+p_rf = p_rf_sum;
 % show accuracy and confusion matrix ...
 confus_script;
 
