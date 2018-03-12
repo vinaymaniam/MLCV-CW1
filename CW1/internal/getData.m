@@ -190,7 +190,7 @@ switch MODE
             for c=1:length(classList)
                 for i=1:length(imgIdx_tr)
                     % for each descriptor, we create the histogram
-                    leaves=testTrees_fast(single(desc_tr{c,i}(1:end,:)'),trees);
+                    leaves=testTrees_fast(single(desc_tr{c,i}(1:end,:)'),trees,param.weakLearner);
                     data_train(imgSel(1)*(c-1)+i,1:end-1)=hist(reshape(leaves,1,numel(leaves)),nLeaves)/length(leaves);
                     data_train(imgSel(1)*(c-1)+i,end)=c;
                 end
@@ -266,7 +266,7 @@ switch MODE
                 for i=1:imgSel(2)
                     % for each descriptor, we create the histogram
                     currDescriptor=[single(desc_te{c,i}(1:end,:)') zeros(size(desc_te{c,i},2),1)];
-                    leaves=testTrees_fast(currDescriptor,trees);
+                    leaves=testTrees_fast(currDescriptor,trees,param.weakLearner);
                     data_query(imgSel(2)*(c-1)+i,1:end-1)=hist(reshape(leaves,1,numel(leaves)),nLeaves)./numel(leaves);
                     data_query(imgSel(2)*(c-1)+i,end)=c;
                 end

@@ -70,21 +70,20 @@ switch mode
         % Test on the dense 2D grid data, and visualise the results ... 
         if smallTest == 1
             plot_toydata(data_test, 'testsmall');
-            figure;
-            for i = 1:4
-                subplot(2,2,i);
-                bar(p_rf_sum(i,:),1); 
-                yl = xlim();
-                axis tight;
-                ylim([0 1])
-                title(sprintf('Class Distribution for Point %i',i));
-            end            
         else
-            plot_toydata(data_test, 'test');
-        end
+%         plot_toydata(data_test, 'test');
         plot_toydata(data_train,'train');
 
 %         plot_class_dist(trees);
+        figure;
+        for i = 1:4
+            subplot(2,2,i);
+            bar(p_rf_sum(i,:),1); 
+            yl = xlim();
+            axis tight;
+            ylim([0 1])
+            title(sprintf('Class Distribution for Point %i',i));
+        end
 
         
         % Change the RF parameter values and evaluate ...         

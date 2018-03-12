@@ -5,7 +5,7 @@ if iter == 0
     iter = 4;
 end
 
-subplot(4,4,4*(iter-1)+1);
+subplot(4,4,4*(iter)-1);
 if dim == 1
     plot([t t],[r(1),r(2)],'r');
 else
@@ -43,16 +43,16 @@ axis([r(1) r(2) r(1) r(2)]);
 hold off;
 
 % histogram of base node
-subplot(4,4,4*(iter-1)+2);
+subplot(1,4,2);
 tmp = hist(data(:,end), unique(data(:,end)));
 bar(tmp);
 axis([0.5 3.5 0 max(tmp)]);
 title('Class histogram of parent node');
-subplot(4,4,4*(iter-1)+3);
+subplot(1,4,3);
 bar(hist(data(idx_best,end), unique(data(:,end))));
 axis([0.5 3.5 0 max(tmp)]);
 title('Class histogram of left child node');
-subplot(4,4,4*(iter-1)+4);
+subplot(1,4,4);
 bar(hist(data(~idx_best,end), unique(data(:,end))));
 axis([0.5 3.5 0 max(tmp)]);
 title('Class histogram of right child node');
