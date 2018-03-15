@@ -1,4 +1,4 @@
-function [ data_train, data_query ] = getData(MODE, numBins, type, param)
+function [ data_train, data_query ] = getData(MODE, type, param)
 % Generate training and testing data
 
 % Data Options:
@@ -129,46 +129,31 @@ switch MODE
         % write your own codes here
         % ...
         if strcmp(type,'kmeanscodebook')
-            disp('K-Means Codebook...')
+            
             % 100k x 1 vector containing the cluster number for each descriptor
             % MENTION IN REPORT THAT kmeans DsOES NOT CONVERGE IN n ITERATIONS
             % [kmeans_idx1, centroids1, kmeans_sums1] = kmeans(desc_sel',numBins);
-            energy = inf;
-            for i=1:1
-                [kmeansIdx1, centroids1, energy1] = kmeans_custom(double(desc_sel),numBins, 3000);
-                if energy1 < energy
-                    kmeansIdx = kmeansIdx1;
-                    centroids = centroids1;
-                    energy = energy1;
-                end
-            end     
-    %         k = 1;
-    %         data_train = zeros(size(desc_tr,1)*size(desc_tr,2), numBins+1);
-    %         for c = 1:length(classList)
-    %             for i = 1:length(imgIdx_tr)
-    %                 label = knnsearch(centroids, desc_tr{c,i}');  
-    %                 label = reshape(label,[],1);
-    %                 figure;
-    %                 data_train(k, 1:end-1) = hist(label,numBins)/length(label);
-    %                 data_train(k,end) = c;
-    %                 k = k+1;
-    %             end
-    %         end
-    %         toc(t1)
-    %         t2 = tic;
-
+            % [kmeansIdx, centroids, energy] = kmeans(desc_sel',numBins);
+            % [kmeansIdx1, centroids1, energy1] = kmeans_custom(double(desc_sel),numBins, 3000);
+            
+            [centroids, time] = kmeanscodebook(desc_sel',param.numBins,param.numRep);
+            fprintf('K-means took %.2f seconds\n',time)
             k = 1;
-            data_train = zeros(size(desc_tr,1)*size(desc_tr,2), numBins+1);
+            data_train = zeros(size(desc_tr,1)*size(desc_tr,2), param.numBins+1);
             for c = 1:length(classList)
                 for i = 1:length(imgIdx_tr)
                     [~,label] = min(dot(centroids',centroids',1)'/2-centroids*single(desc_tr{c,i}),[],1);  % assign sample labels
-                    figure;
-                    data_train(k, 1:end-1) = hist(label,numBins)/length(label);
+                    data_train(k, 1:end-1) = histcounts(label,param.numBins)/length(label);
                     data_train(k,end) = c;
                     k = k+1;
                 end
             end            
-        elseif strcmp(type,'rfcodebook')    
+        elseif strcmp(type,'rfcodebook')   
+            param1.num = 200;         % Number of trees
+            param1.depth = 5;        % trees depth
+            param1.splitNum = 15;     % Number of split functions to try
+            param1.split = 'IG';     % Currently support 'information gain' only
+            param1.weakLearner = 'axisAligned'; %{twoPixelTest, linearLearn, nonlinearLearn}          
             disp('RF Codebook...')
             % append the classes to the end of each descriptor
             for c=1:length(classList)
@@ -179,25 +164,27 @@ switch MODE
             
             % Build visual vocabulary (codebook) for 'Bag-of-Words method'
             desc_sel = single(vl_colsubset(cat(2,desc_tr{:}), 10e4))';
+            time1 = tic;
+            trees = growTrees(desc_sel,param1);
             
-            trees = growTrees(desc_sel,param);
-%             trees = fix_trees(trees);
-            
-            % next generate histograms
+            % next generate histograms           
             nLeaves=length(trees(1).prob);
             data_train=zeros(length(classList)*imgSel(1),nLeaves+1);
             % iterate over all points
+            k = 1;
             for c=1:length(classList)
                 for i=1:length(imgIdx_tr)
                     % for each descriptor, we create the histogram
                     leaves=testTrees_fast(single(desc_tr{c,i}(1:end,:)'),trees,param.weakLearner);
-                    data_train(imgSel(1)*(c-1)+i,1:end-1)=hist(reshape(leaves,1,numel(leaves)),nLeaves)/length(leaves);
-                    data_train(imgSel(1)*(c-1)+i,end)=c;
+                    data_train(k,1:end-1)=histcounts(reshape(leaves,1,numel(leaves)),nLeaves)/numel(leaves);
+                    data_train(k,end)=c;
+                    k = k+1;
                 end
             end
+            trf = toc(time1);
+            fprintf('RF Codebook took %.1f s to generate',trf)
         end
         % end of own code
-        
         disp('Encoding Images...')                
         
         % Clear unused varibles to save memory
@@ -248,12 +235,11 @@ switch MODE
         % ...
         if strcmp(type,'kmeanscodebook')
             k = 1;
-            data_query = zeros(size(desc_te,1)*size(desc_te,2), numBins+1);
+            data_query = zeros(size(desc_te,1)*size(desc_te,2), param.numBins+1);
             for c = 1:length(classList)
                 for i = 1:length(imgIdx_te)
                     [~,label] = min(dot(centroids',centroids',1)'/2-centroids*single(desc_te{c,i}),[],1);  % assign sample labels
-                    figure;
-                    data_query(k, 1:end-1) = hist(label,numBins)/length(label);
+                    data_query(k, 1:end-1) = histcounts(label,param.numBins)/numel(label);
                     data_query(k,end) = c;
                     k = k+1;
                 end
@@ -261,14 +247,16 @@ switch MODE
         elseif (strcmp(type,'rfcodebook'))
             % next generate histograms
             data_query=zeros(length(classList)*imgSel(2),nLeaves+1);
-            % iterate over all points
+            % iterate over all points          
+            k=1;
             for c=1:length(classList)
                 for i=1:imgSel(2)
                     % for each descriptor, we create the histogram
                     currDescriptor=[single(desc_te{c,i}(1:end,:)') zeros(size(desc_te{c,i},2),1)];
                     leaves=testTrees_fast(currDescriptor,trees,param.weakLearner);
-                    data_query(imgSel(2)*(c-1)+i,1:end-1)=hist(reshape(leaves,1,numel(leaves)),nLeaves)./numel(leaves);
-                    data_query(imgSel(2)*(c-1)+i,end)=c;
+                    data_query(k,1:end-1)=histcounts(reshape(leaves,1,numel(leaves)),nLeaves)./numel(leaves);
+                    data_query(k,end)=c;
+                    k = k+1;
                 end
             end            
         end

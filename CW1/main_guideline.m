@@ -1,4 +1,4 @@
-clear
+% clear
 rng default
 % Simple Random Forest Toolbox for Matlab
 % written by Mang Shao and Tae-Kyun Kim, June 20, 2014.
@@ -14,11 +14,12 @@ rng default
 % init;
 
 modes = {'Toy_Spiral', 'Caltech'};
-mode = 1; %1 for toy spiral, 2 for caltech
+mode = 2; %1 for toy spiral, 2 for caltech
 
 switch mode
     case 1
-% Select dataset
+        clear
+        % Select dataset
         [data_train, data_test] = getData('Toy_Spiral'); % {'Toy_Gaussian', 'Toy_Spiral', 'Toy_Circle', 'Caltech'}
 
         % Set the random forest parameters
@@ -30,8 +31,8 @@ switch mode
 
         tic
 
-        param.num = 100;         % Number of trees
-        param.depth = 5;        % trees depth
+        param.num = 100;         % Number of trees [1 6 34 100 200]
+        param.depth = 5;        % trees depth 2 5 10 15
         param.splitNum = 3;     % Number of split functions to try
         param.split = 'IG';     % Currently support 'information gain' only
         param.weakLearner = 'axisAligned'; % {'axisAligned','linear','nonLinear','twoPixelTest'}
@@ -68,6 +69,7 @@ switch mode
         [~,data_test(:,3)]=max(p_rf_sum');
 
         % Test on the dense 2D grid data, and visualise the results ... 
+        figure('rend','painters','pos',[100 100 450 300])
         if smallTest == 1
             plot_toydata(data_test, 'testsmall');
             figure;
@@ -83,8 +85,9 @@ switch mode
             plot_toydata(data_test, 'test');
         end
         plot_toydata(data_train,'train');
+%         title(sprintf('splitNum = %i',param.splitNum));
 
-%         plot_class_dist(trees);
+%         plot_class_dist(trees, 6);
 
         
         % Change the RF parameter values and evaluate ...         
@@ -93,16 +96,23 @@ switch mode
         % experiment with Caltech101 dataset for image categorisation
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%        
         % Set the random forest parameters ...
-        param.num = 100;         % Number of trees
+        param.num = 200;         % Number of trees
         param.depth = 5;        % trees depth
-        param.splitNum = 3;     % Number of split functions to try
+        param.splitNum = 15;     % Number of split functions to try
         param.split = 'IG';     % Currently support 'information gain' only
         param.weakLearner = 'axisAligned'; %{twoPixelTest, linearLearn, nonlinearLearn}
-        numBins = 256;
+        param.numBins = 64;
+        param.numRep = 2;
 
-        [data_train, data_test] = getData('Caltech', numBins, 'rfcodebook', param);
-        close all;
-
+        tuneCodebook = 1;
+        if tuneCodebook 
+            clearvars -except param
+            %[data_train, data_test] = getData('Caltech', 'kmeanscodebook', param);
+            [data_train, data_test] = getData('Caltech', 'rfcodebook', param);
+            %save(sprintf('codebook%i',param.numBins),'data_train','data_test');
+            save(sprintf('rfcodebook%i',param.numBins),'data_train','data_test');
+            close all;
+        end        
         % Train Random Forest ...
         trees = growTrees(data_train,param);
 
@@ -122,7 +132,14 @@ switch mode
 
         wrongClass = data_test(data_test(:,end)~=c');
         rightClass = data_test(data_test(:,end)==c');
-
+        
+%         corrclassplt
+%         misclassplt
+%         figure;
+%         for i = 1:3
+%             subplot(2,3,i);
+%             plot(
+%         end
         disp('Done');
         %%
         % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 

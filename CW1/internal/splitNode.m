@@ -34,18 +34,14 @@ for n = 1:iter
         case 'nonLinear'
             [idx_, dim, t] = nonlinearLearn(D, data);
     end        
-
-    ig = getIG(data,idx_); % Calculate information gain
-    
+    ig = getIG(data,idx_); % Calculate information gain   
     if visualise
         visualise_splitfunc(idx_,data,dim,t,ig,n, param.weakLearner);
         pause();
-    end
-    
+    end    
     if (sum(idx_) > 0 & sum(~idx_) > 0) % We check that children node are not empty
         [node, ig_best, idx_best] = updateIG(node,ig_best,ig,t,idx_,dim,idx_best);
-    end
-    
+    end    
 end
 
 nodeL.idx = idx(idx_best);

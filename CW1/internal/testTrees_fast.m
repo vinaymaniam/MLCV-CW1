@@ -2,7 +2,7 @@ function label = testTrees_fast(data,tree,weakLearner)
 % Faster version - pass all data at same time
 for T = 1:length(tree)
     idx{1} = 1:size(data,1);
-    for n = 1:length(tree(T).node);
+    for n = 1:length(tree(T).node)
         if ~tree(T).node(n).dim
             leaf_idx = tree(T).node(n).leaf_idx;
             if ~isempty(tree(T).leaf(leaf_idx))
