@@ -1,7 +1,7 @@
-function [node,nodeL,nodeR] = splitNode(data,node,param)
+function [node,nodeL,nodeR] = splitNode(data,node,param,idx)
 % Split node
 
-visualise = 0;
+visualise = 1;
 
 % Initilise child nodes
 iter = param.splitNum;
@@ -33,7 +33,8 @@ for n = 1:iter
     
     
     if visualise
-        visualise_splitfunc(idx_,data,dim,t,ig,n);
+        %visualise_splitfunc(idx_,data,dim,t,ig,n);
+        visualise_samples(idx_,data,dim,t,ig,N,idx);
         pause();
     end
     
