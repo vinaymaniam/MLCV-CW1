@@ -1,7 +1,8 @@
-function [node,nodeL,nodeR] = splitNode(data,node,param,idx)
+function [node,nodeL,nodeR, ig_best] = splitNode(data,node,param)
 % Split node
 
-visualise = 1;
+visualise = 0;
+
 
 % Initilise child nodes
 iter = param.splitNum;
@@ -11,6 +12,7 @@ nodeR = struct('idx',[],'t',nan,'dim',0,'prob',[]);
 if length(node.idx) <= 5 % make this node a leaf if has less than 5 data points
     node.t = nan;
     node.dim = 0;
+    ig_best = 0;
     return;
 end
 
@@ -22,33 +24,31 @@ idx_best = [];
 for n = 1:iter
 %%    % Split function - Modify here and try other types of split function
     
-    dim = randi(D-1); % Pick one random dimension
-    d_min = single(min(data(:,dim))) + eps; % Find the data range of this dimension
-    d_max = single(max(data(:,dim))) - eps;
-    t = d_min + rand*((d_max-d_min)); % Pick a random value within the range as threshold
-    idx_ = data(:,dim) < t;
-    
-    ig = getIG(data,idx_); % Calculate information gain
-    
-    
-    
+    switch param.weakLearner
+        case 'axisAligned'
+            [idx_, dim, t] = axisAligned(D, data);
+        case 'twoPixelTest'
+            [idx_, dim, t] = twoPixelTest(D, data);
+        case 'linear'
+            [idx_, dim, t] = linearLearn(D, data);
+        case 'nonLinear'
+            [idx_, dim, t] = nonlinearLearn(D, data);
+    end        
+    ig = getIG(data,idx_); % Calculate information gain   
     if visualise
-        %visualise_splitfunc(idx_,data,dim,t,ig,n);
-        visualise_samples(idx_,data,dim,t,ig,N,idx);
+        visualise_splitfunc(idx_,data,dim,t,ig,n, param.weakLearner);
         pause();
-    end
-    
+    end    
     if (sum(idx_) > 0 & sum(~idx_) > 0) % We check that children node are not empty
         [node, ig_best, idx_best] = updateIG(node,ig_best,ig,t,idx_,dim,idx_best);
-    end
-    
+    end    
 end
 
 nodeL.idx = idx(idx_best);
 nodeR.idx = idx(~idx_best);
 
 if visualise
-    visualise_splitfunc(idx_best,data,dim,t,ig_best,0)
+    visualise_splitfunc(idx_best,data,dim,t,ig_best,0, param.weakLearner)
     fprintf('Information gain = %f. \n',ig_best);
     pause();
 end
